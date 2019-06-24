@@ -1,0 +1,316 @@
+#------------------------------------------------------------------
+# 
+#  4190.308 Computer Architecture (Spring 2019)
+#
+#  Project #4: Optimizing Program for a Pipelined Y86-64 Processor
+#
+#  May 28, 2019
+#
+#  Jin-Soo Kim (jinsoo.kim@snu.ac.kr)
+#  Systems Software & Architecture Laboratory
+#  Dept. of Computer Science and Engineering
+#  Seoul National University
+#
+#------------------------------------------------------------------
+
+bmp_diag:
+	# imgptr is in %rdi
+	# width  is in %rsi
+	# height is in %rdx
+	# gap 	 is in %rcx
+	#-----------------------------------------------------------------
+
+	# FILL HERE
+	# You are allowed to use any register supported by Y86-64 architecture
+
+
+irmovq  $3, %r14    # r14 = 3.
+
+	pushq	%rsi 	# original %rsp - '40' // width
+
+	pushq	%rdx 	# %rsp - '32' // height
+
+	pushq	%rcx	# %rsp - '24' // original gap
+
+	mulq	%r14, %rcx
+
+irmovq  $4, %r13    # r13 = 4.
+
+rrmovq  %rsi, %r8   # r8 = width
+
+rrmovq  %rsi, %r12  # r12 = width
+
+	pushq	%rcx 	# %rsp - '16' // pushed_gap ( not original gap)
+
+	pushq	%rdi	# %rsp - '8' // imgptr
+
+mulq    %r14, %r8 # r8 = width * 3
+
+
+irmovq  $1, %r11    # r11 = 1.
+
+rrmovq  %r8, %r12   # r12 = width * 3
+
+
+	# save computed_width in %r8
+
+	iaddq	$0x3,	%r8 # r8 = (width * 3) + 3
+
+	divq	%r13,	%r8
+
+	mulq	%r13,	%r8
+
+	# r8 = (((width*3)+3) / 4) * 4 = computed_width
+
+
+
+	# save new_start in %rsp - '0'
+
+	rrmovq	%r8,	%rax # rax = computed_width
+
+	mulq	%rdx,	%rax # rax = computed_width * heights
+
+
+irmovq  $0x00,  %r10        # r10 = 0x00.
+
+irmovq  $0xff,  %r14        # r14 = 0xff.
+
+	subq	%r8,	%rax # rax = computed_width * (height - 1)
+
+	addq	%rdi,	%rax # rax = computed_width * (height - 1) + imgptr = new_start
+
+	pushq	%rax
+
+
+	# save posX in %rcx
+
+	mrmovq	(%rsp),	%rcx # posX = new_start
+
+
+	# save gap_inc in %rsi
+
+	irmovq	$0, %rsi
+
+
+	# save j in %rdx
+
+	mrmovq	(%rsp), %rdx	# j = new_start
+
+
+mrmovq    16(%rsp), %r9    # r9 = pushed_gap
+
+
+
+
+	# now only %rdi and %rax are free. + %rbp, %rbx, %r9 ~ r14
+
+	# TO-DO
+
+
+
+
+
+
+
+
+	jmp L0
+
+L1:
+
+    subq    %rsi, %r13  # %r13 = pushed_gap - gap_inc
+
+	cmove	%r10, %rsi
+
+#    jne    L4
+
+#    irmovq    $0, %rsi
+
+L4:
+
+    addq    %rsi, %rdx  # %rdx(=j) = posX + gap_inc
+
+	subq    %rsi, %rbx  # rbx(=limit) = width*3 - gap_inc
+
+    jg L2  # when %rbx(=limit) > 0.
+
+    jmp L3  # when %rbx(=limit) <= 0
+
+L2:
+
+    rmmovb    %r10, (%rdx)
+
+    rmmovb    %r10, 1(%rdx)
+
+    rmmovb    %r14, 2(%rdx) # set red.
+
+    addq    %r9, %rdx   # j = j + pushed_gap;
+
+    subq    %r9, %rbx   # limit - pushed_gap
+
+    jg    L2   # if limit > 0
+
+L3:
+
+    subq    %r8, %rcx    # posX = posX - computed_width
+
+    iaddq    $3, %rsi    # gap_inc = gap_inc + 3
+
+
+
+
+L0:
+
+    mrmovq  8(%rsp), %rdi # %rdi = imgptr
+
+rrmovq  %r9, %r13 # %r13 = %r9(=pushed_gap)
+
+rrmovq  %rcx, %rdx  # rdx(=j) = posX
+
+rrmovq  %r12, %rbx  # rbx(=limit) = width*3
+
+	subq	%rcx, %rdi # %rdi = imgptr - posX
+
+	jle	L1	# jump posX >= imgptr ##################
+
+
+
+
+
+// start here.
+
+
+
+    mrmovq  (%rsp), %rdi    # %rdi = new_start
+
+    irmovq  $0, %rsi  # gap_inc = 0
+
+    rrmovq  %rdi, %rcx  # posX = new_start
+
+    rrmovq  %rdi, %rax  # %rax = new_start
+
+    addq    %r9, %rcx    # posX = new_start + pushed_gap
+
+    addq    %r12, %rax  # %rax = width*3 + new_start
+
+# rax is now new variable tmp_start!!!!!!!!!!!!!!!!!
+
+	rrmovq	%rcx, %rdx   # rdx(=j) = posX
+
+
+
+
+
+
+	jmp L15
+
+L11:
+
+    subq    %rsi, %r13  # %r13 = pushed_gap - gap_inc
+
+	cmove	%r10, %rsi
+
+#    jne    L14
+
+#   irmovq    $0, %rsi
+
+L14:
+
+    subq    %rsi, %rdx  # %rdx(=j) = posX - gap_inc (changed!)
+
+    subq    %rdx, %rbx  # %rbx(=limit) = tmp_start - j
+
+    jg L12  # when %rbx(=limit) > 0.    # because we got tmp_start - j. Not tmp_start - j - 1
+
+    jmp L13  # when %rbx(=limit) <= 0
+
+L12:
+
+    rmmovb    %r10, (%rdx)
+
+    rmmovb    %r10, 1(%rdx)
+
+    rmmovb    %r14, 2(%rdx) # set red.
+
+    addq    %r9, %rdx   # j = j + pushed_gap;
+
+    subq    %r9, %rbx   # limit - pushed_gap
+
+    jg    L12   # if limit > 0
+
+L13:
+
+    subq    %r8, %rcx    # posX = posX - computed_width
+
+    iaddq    $3, %rsi    # gap_inc = gap_inc + 3
+
+	subq	%r8, %rax	# tmp_start = tmp_start - computed_width
+
+
+
+L15:
+
+    mrmovq  8(%rsp), %rdi # %rdi = imgptr
+
+    rrmovq  %r9, %r13 # %r13 = %r9(=pushed_gap)
+
+rrmovq  %rcx, %rdx  # rdx(=j) = posX
+
+rrmovq  %rax, %rbx  # rbx(=limit) = tmp_start
+
+    subq    %rcx, %rdi # %rdi = imgptr - posX
+
+	jle	L11	# jump posX >= imgptr ##################
+
+
+
+
+
+
+	# end
+
+
+
+
+
+	# Example: Initially, the %rdi register points to the first 
+
+	# pixel in the last row of the image.  The following three 
+
+	# instructions change its color to red.
+
+
+//	movb 	$0x00, (%rdi)			# blue
+
+//	movb	$0x00, 1(%rdi)			# green
+
+//	movb	$0xff, 2(%rdi)			# red
+
+
+
+	popq	%rax
+
+	popq	%rdi
+
+	popq	%rcx
+
+	popq	%rcx
+
+	popq	%rdx
+
+	popq	%rsi
+
+
+
+
+
+
+
+
+
+
+
+
+
+	#-----------------------------------------------------------------
+
+	ret
