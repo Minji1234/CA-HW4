@@ -6,5 +6,5 @@ DO NOT COPY
 
 Original File Credit
 
-https://github.com/snu-csl/ca-pa3
-Refer to Original_README.md
+- https://github.com/snu-csl/ca-pa3
+- Refer to Original_README.md
